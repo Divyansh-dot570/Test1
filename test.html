@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Study / Project Tracker with Leaderboard</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa6b2;--accent:#7dd3fc;--accent-2:#60a5fa}
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{margin:0;background:linear-gradient(180deg,#071025 0%,var(--bg) 100%);color:#e6eef6;padding:20px}
+    .app{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:360px 1fr;gap:20px}
+    header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between}
+    h1{margin:0;font-size:20px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+
+    /* left column */
+    .sidebar{display:flex;flex-direction:column;gap:12px}
+    .profile{display:flex;gap:12px;align-items:center}
+    .avatar{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#05243a}
+    label,input,select,textarea,button{font-family:inherit}
+    input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:inherit}
+    .small{font-size:13px;color:var(--muted)}
+    .btn{padding:8px 12px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#05243a;font-weight:600;cursor:pointer}
+    .ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+
+    /* task list */
+    .tasks{display:flex;flex-direction:column;gap:10px}
+    .task{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px;border-radius:10px;background:rgba(255,255,255,0.01)}
+    .task .meta{flex:1}
+    .progressbar{height:8px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden}
+    .bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+    .controls{display:flex;gap:6px}
+
+    /* main */
+    .maingrid{display:grid;grid-template-columns:1fr 360px;gap:20px}
+    .tasks-area{display:flex;flex-direction:column;gap:12px}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.03)}
+    th{color:var(--muted);font-size:13px}
+    .leaderboard-row{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px}
+    .level-pill{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;font-weight:700}
+
+    footer{grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;margin-top:18px}
+
+    @media(max-width:980px){.app{grid-template-columns:1fr;}.maingrid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Study / Project Tracker — Leaderboard</h1>
+      <div class="small">No default users — create your account</div>
+    </header>
+
+    <aside class="sidebar">
+      <div class="card profile">
+        <div class="avatar" id="avatar">?</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div id="displayName">—</div>
+              <div class="small" id="displayStatus">Not signed in</div>
+            </div>
+            <div>
+              <button class="btn" id="signOutBtn" style="display:none">Sign Out</button>
+            </div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <input id="usernameInput" placeholder="Create username" />
+            <button class="btn" id="createBtn">Create</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>Friends</strong>
+          <button class="ghost" id="addFriendToggle">+ Add</button>
+        </div>
+        <div id="addFriendArea" style="display:none;margin-bottom:8px">
+          <input id="friendName" placeholder="Friend's username" />
+          <div style="margin-top:6px;display:flex;gap:8px">
+            <button class="btn" id="addFriendBtn">Add Friend</button>
+            <button class="ghost" id="importBtn">Import</button>
+          </div>
+        </div>
+        <div id="friendsList" class="small">No friends yet</div>
+      </div>
+
+      <div class="card">
+        <strong>Quick Stats</strong>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="small">Level<div id="statLevel" style="font-weight:700">—</div></div>
+          <div class="small">XP<div id="statXp" style="font-weight:700">—</div></div>
+          <div class="small">Tasks<div id="statTasks" style="font-weight:700">—</div></div>
+          <div class="small">Completed<div id="statDone" style="font-weight:700">—</div></div>
+        </div>
+      </div>
+
+      <div class="card small">
+        <strong>Data</strong>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="ghost" id="exportBtn">Export JSON</button>
+          <button class="ghost" id="clearAllBtn">Clear all</button>
+        </div>
+        <p class="small" style="margin-top:8px">Clearing will remove all users & tasks from your browser localStorage.</p>
+      </div>
+    </aside>
+
+    <main>
+      <div class="maingrid">
+        <section class="card tasks-area">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3 style="margin:0">Your Tasks</h3>
+            <div class="small">Create tasks, track progress, earn XP</div>
+          </div>
+
+          <form id="taskForm" style="display:grid;grid-template-columns:1fr 120px;gap:8px">
+            <input id="taskTitle" placeholder="Task title" required />
+            <input id="taskPoints" placeholder="XP points" type="number" min="0" value="50" />
+            <textarea id="taskDesc" placeholder="Short description (optional)" style="grid-column:1/ -1;height:56px"></textarea>
+            <input id="taskDue" type="date" />
+            <button class="btn" style="grid-column:1/ -1" type="submit">Add Task</button>
+          </form>
+
+          <div id="tasksContainer" style="margin-top:6px">
+            <div class="small">No tasks yet</div>
+          </div>
+        </section>
+
+        <aside class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong>Leaderboard</strong>
+            <div class="small" title="Sort">Sort: <select id="sortBy"><option value="level">Level</option><option value="xp">XP</option></select></div>
+          </div>
+          <div id="leaderboard"></div>
+        </aside>
+      </div>
+
+      <section class="card" style="margin-top:12px">
+        <h3 style="margin:0 0 8px 0">Activity Log</h3>
+        <div id="activityLog" class="small">No activity yet.</div>
+      </section>
+    </main>
+
+    <footer>Made for learning — local only. Data is saved in your browser.</footer>
+  </div>
+
+  <script>
+    // --- Storage schema overview
+    // data = { users: { username: {username, xp, tasks:[], friends:[] } }, current: username }
+
+    const LS_KEY = 'study_tracker_v1'
+    function save(data){localStorage.setItem(LS_KEY, JSON.stringify(data))}
+    function load(){try{return JSON.parse(localStorage.getItem(LS_KEY))||{users:{},current:null}}catch(e){return {users:{},current:null}}}
+
+    let state = load()
+
+    // --- utils: level formula
+    function levelFromXp(xp){ // simple progressive leveling
+      // level 1 at xp 0; next levels require quadratic growth
+      return Math.floor(Math.sqrt(xp/100)) + 1
+    }
+    function xpToNext(level){return ((level)* (level) * 100) - ((level-1)*(level-1)*100)}
+
+    // --- DOM refs
+    const usernameInput = document.getElementById('usernameInput')
+    const createBtn = document.getElementById('createBtn')
+    const displayName = document.getElementById('displayName')
+    const displayStatus = document.getElementById('displayStatus')
+    const avatar = document.getElementById('avatar')
+    const signOutBtn = document.getElementById('signOutBtn')
+
+    const addFriendToggle = document.getElementById('addFriendToggle')
+    const addFriendArea = document.getElementById('addFriendArea')
+    const friendName = document.getElementById('friendName')
+    const addFriendBtn = document.getElementById('addFriendBtn')
+    const friendsList = document.getElementById('friendsList')
+
+    const statLevel = document.getElementById('statLevel')
+    const statXp = document.getElementById('statXp')
+    const statTasks = document.getElementById('statTasks')
+    const statDone = document.getElementById('statDone')
+
+    const taskForm = document.getElementById('taskForm')
+    const taskTitle = document.getElementById('taskTitle')
+    const taskDesc = document.getElementById('taskDesc')
+    const taskPoints = document.getElementById('taskPoints')
+    const taskDue = document.getElementById('taskDue')
+    const tasksContainer = document.getElementById('tasksContainer')
+
+    const leaderboard = document.getElementById('leaderboard')
+    const sortBy = document.getElementById('sortBy')
+
+    const activityLog = document.getElementById('activityLog')
+    const exportBtn = document.getElementById('exportBtn')
+    const clearAllBtn = document.getElementById('clearAllBtn')
+
+    // --- initial render
+    renderAll()
+
+    // --- events
+    createBtn.addEventListener('click', ()=>{
+      const u = usernameInput.value.trim()
+      if(!u){alert('Choose a username') ; return}
+      if(state.users[u]){state.current = u; save(state); renderAll(); return}
+      state.users[u] = {username:u,xp:0,tasks:[],friends:[],activity:[]}
+      state.current = u
+      save(state)
+      usernameInput.value = ''
+      logActivity(u, 'Account created')
+      renderAll()
+    })
+
+    signOutBtn.addEventListener('click', ()=>{state.current = null; save(state); renderAll()})
+
+    addFriendToggle.addEventListener('click', ()=>{addFriendArea.style.display = addFriendArea.style.display==='none'? 'block':'none'})
+    addFriendBtn.addEventListener('click', ()=>{
+      const f = friendName.value.trim()
+      const cur = state.current
+      if(!cur){alert('Sign in first') ; return}
+      if(!f){alert('Type friend username'); return}
+      if(!state.users[f]){ // create a placeholder friend with zero xp (no default users - they are still created by you or added as placeholders)
+        state.users[f] = {username:f,xp:0,tasks:[],friends:[],activity:[]}
+      }
+      const uobj = state.users[cur]
+      if(uobj.friends.includes(f)){alert('Already a friend'); return}
+      uobj.friends.push(f)
+      save(state)
+      friendName.value = ''
+      logActivity(cur, `Added friend ${f}`)
+      renderAll()
+    })
+
+    taskForm.addEventListener('submit', (e)=>{
+      e.preventDefault()
+      const cur = state.current
+      if(!cur){alert('Sign in first'); return}
+      const title = taskTitle.value.trim()
+      if(!title) return
+      const points = Math.max(0, parseInt(taskPoints.value)||50)
+      const t = {id:Date.now().toString(36),title,desc:taskDesc.value||'',points,done:false,progress:0,created:new Date().toISOString(),due:taskDue.value||null}
+      state.users[cur].tasks.push(t)
+      save(state)
+      taskForm.reset()
+      logActivity(cur, `Added task: ${title}`)
+      renderAll()
+    })
+
+    exportBtn.addEventListener('click', ()=>{
+      const dataStr = JSON.stringify(state,null,2)
+      const blob = new Blob([dataStr],{type:'application/json'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href=url; a.download='study_tracker_export.json'; a.click(); URL.revokeObjectURL(url)
+    })
+
+    clearAllBtn.addEventListener('click', ()=>{
+      if(!confirm('Clear all data? This will remove users and tasks from this browser.')) return
+      state = {users:{},current:null}
+      save(state)
+      renderAll()
+    })
+
+    sortBy.addEventListener('change', renderLeaderboard)
+
+    // --- helpers
+    function renderAll(){renderProfile();renderFriends();renderTasks();renderLeaderboard();renderStats();renderActivity()}
+
+    function renderProfile(){
+      const cur = state.current
+      if(!cur){displayName.textContent='—';displayStatus.textContent='Not signed in';avatar.textContent='?';signOutBtn.style.display='none';return}
+      const u = state.users[cur]
+      displayName.textContent = u.username
+      displayStatus.textContent = `Level ${levelFromXp(u.xp)} • ${u.xp} XP`
+      avatar.textContent = u.username.slice(0,2).toUpperCase()
+      signOutBtn.style.display = 'inline-block'
+    }
+
+    function renderFriends(){
+      const cur = state.current
+      if(!cur){friendsList.textContent='Sign in to manage friends'; return}
+      const list = state.users[cur].friends
+      if(!list.length){friendsList.textContent='No friends yet'}else{
+        friendsList.innerHTML = ''
+        list.forEach(f=>{
+          const btn = document.createElement('div'); btn.className='small'; btn.style.display='flex'; btn.style.justifyContent='space-between'; btn.style.alignItems='center'; btn.style.marginBottom='6px'
+          const left = document.createElement('div'); left.textContent = f
+          const right = document.createElement('div')
+          const view = document.createElement('button'); view.className='ghost'; view.textContent='View'; view.onclick=()=>{state.current = f; save(state); renderAll()}
+          const remove = document.createElement('button'); remove.className='ghost'; remove.textContent='Remove'; remove.onclick=()=>{if(confirm('Remove friend?')){const idx=state.users[cur].friends.indexOf(f); if(idx>=0) state.users[cur].friends.splice(idx,1); save(state); renderAll()}}
+          right.appendChild(view); right.appendChild(remove)
+          btn.appendChild(left); btn.appendChild(right)
+          friendsList.appendChild(btn)
+        })
+      }
+    }
+
+    function renderTasks(){
+      const cur = state.current
+      if(!cur){tasksContainer.innerHTML='<div class="small">Sign in to create tasks.</div>'; return}
+      const tasks = state.users[cur].tasks
+      if(!tasks.length){tasksContainer.innerHTML='<div class="small">No tasks yet</div>'; return}
+      tasksContainer.innerHTML=''
+      tasks.slice().reverse().forEach(t=>{
+        const el = document.createElement('div'); el.className='task'
+        const meta = document.createElement('div'); meta.className='meta'
+        const title = document.createElement('div'); title.style.fontWeight='700'; title.textContent = t.title
+        const desc = document.createElement('div'); desc.className='small'; desc.textContent = t.desc || (t.due?('Due: '+t.due):'')
+        const progressWrap = document.createElement('div'); progressWrap.style.marginTop='6px'
+        const barWrap = document.createElement('div'); barWrap.className='progressbar'
+        const bar = document.createElement('div'); bar.className='bar'; bar.style.width = (t.progress|| (t.done?100:0)) + '%'
+        barWrap.appendChild(bar); progressWrap.appendChild(barWrap)
+        meta.appendChild(title); meta.appendChild(desc); meta.appendChild(progressWrap)
+
+        const controls = document.createElement('div'); controls.className='controls'
+        const inc = document.createElement('button'); inc.className='btn'; inc.textContent='+10%'; inc.onclick=()=>{t.progress = Math.min(100,(t.progress||0)+10); if(t.progress===100) {t.done=true; grantXp(state.current,t.points); logActivity(state.current, `Completed task: ${t.title} (+${t.points} XP)`)} save(state); renderAll()}
+        const dec = document.createElement('button'); dec.className='ghost'; dec.textContent='-10%'; dec.onclick=()=>{t.progress = Math.max(0,(t.progress||0)-10); if(t.progress<100) t.done=false; save(state); renderAll()}
+        const del = document.createElement('button'); del.className='ghost'; del.textContent='Delete'; del.onclick=()=>{if(confirm('Delete task?')){const arr = state.users[state.current].tasks; const idx=arr.findIndex(x=>x.id===t.id); if(idx>=0) arr.splice(idx,1); save(state); renderAll(); logActivity(state.current, `Deleted task: ${t.title}`)}}
+        controls.appendChild(inc); controls.appendChild(dec); controls.appendChild(del)
+
+        el.appendChild(meta); el.appendChild(controls)
+        tasksContainer.appendChild(el)
+      })
+    }
+
+    function grantXp(username, points){
+      const u = state.users[username]
+      if(!u) return
+      u.xp = (u.xp||0) + points
+      save(state)
+    }
+
+    function renderLeaderboard(){
+      const rows = Object.values(state.users)
+      if(!rows.length){leaderboard.innerHTML='<div class="small">No users yet</div>'; return}
+      const s = sortBy.value
+      rows.sort((a,b)=>{
+        if(s==='level'){
+          const la = levelFromXp(a.xp), lb = levelFromXp(b.xp)
+          if(la!==lb) return lb-la
+          return b.xp - a.xp
+        } else return b.xp - a.xp
+      })
+      leaderboard.innerHTML=''
+      rows.forEach(u=>{
+        const r = document.createElement('div'); r.className='leaderboard-row'
+        r.style.border = '1px solid rgba(255,255,255,0.02)'; r.style.marginBottom='8px'
+        const left = document.createElement('div'); left.style.display='flex'; left.style.alignItems='center'; left.style.gap='10px'
+        const av = document.createElement('div'); av.className='avatar'; av.style.width='40px'; av.style.height='40px'; av.style.borderRadius='10px'; av.textContent = u.username.slice(0,2).toUpperCase()
+        const txt = document.createElement('div'); txt.innerHTML=`<div style="font-weight:700">${u.username}</div><div class="small">Level ${levelFromXp(u.xp)} • ${u.xp} XP</div>`
+        left.appendChild(av); left.appendChild(txt)
+        const right = document.createElement('div'); right.style.display='flex'; right.style.alignItems='center'; right.style.gap='10px'
+        const lev = document.createElement('div'); lev.className='level-pill'; lev.textContent = 'Lv ' + levelFromXp(u.xp)
+        const viewBtn = document.createElement('button'); viewBtn.className='ghost'; viewBtn.textContent='Switch'; viewBtn.onclick=()=>{if(confirm(`Switch to ${u.username} profile?`)){state.current = u.username; save(state); renderAll()}}
+        right.appendChild(lev); right.appendChild(viewBtn)
+        r.appendChild(left); r.appendChild(right)
+        leaderboard.appendChild(r)
+      })
+    }
+
+    function renderStats(){
+      const cur = state.current
+      if(!cur){statLevel.textContent='—';statXp.textContent='—';statTasks.textContent='—';statDone.textContent='—';return}
+      const u = state.users[cur]
+      statLevel.textContent = levelFromXp(u.xp)
+      statXp.textContent = u.xp
+      statTasks.textContent = u.tasks.length
+      statDone.textContent = u.tasks.filter(t=>t.done).length
+    }
+
+    function logActivity(username, text){
+      const when = new Date().toLocaleString()
+      const entry = `${when} • ${username}: ${text}`
+      // global activity log stored in local state for simplicity
+      state.global = state.global||[]
+      state.global.unshift(entry)
+      if(state.global.length>200) state.global.length=200
+      // also store in user activity
+      if(state.users[username]){
+        state.users[username].activity = state.users[username].activity||[]
+        state.users[username].activity.unshift(entry)
+        if(state.users[username].activity.length>50) state.users[username].activity.length=50
+      }
+      save(state)
+      renderActivity()
+    }
+
+    function renderActivity(){
+      const items = state.global||[]
+      if(!items.length){activityLog.textContent='No activity yet.'; return}
+      activityLog.innerHTML = items.slice(0,30).map(i=>`<div style="margin-bottom:6px">${i}</div>`).join('')
+    }
+
+    // initial hint if no data
+    if(Object.keys(state.users).length===0){activityLog.innerHTML = '<div class="small">Welcome — create a username to get started. No users are added by default.</div>'}
+
+    // expose for debugging (optional)
+    window._tracker_state = state
+  </script>
+</body>
+</html>
